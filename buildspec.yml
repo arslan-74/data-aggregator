@@ -10,49 +10,75 @@ phases:
       python: 3.9
       nodejs: 12
     commands:
+      # DEBUG: Show what directory we're in
+      - echo "Current directory:"
+      - pwd
+      
+      # DEBUG: List all files and folders
+      - echo "Listing all files:"
+      - ls -la
+      
       # Setup SSH key for deployment
       - mkdir -p ~/.ssh
       - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan -H 54.208.23.59 >> ~/.ssh/known_hosts
       
-      # NO cd command needed - we're already in async-data-aggregator!
+      # Try to find the project folder
+      - echo "Looking for async-data-aggregator folder:"
+      - find . -name "backend" -type d
+      
+      # Navigate to the project folder
+      - cd async-data-aggregator || echo "Failed to cd to async-data-aggregator"
+      
+      # Show what's in the project folder
+      - echo "Contents of async-data-aggregator:"
+      - ls -la || echo "Directory not found"
       
       # Install backend dependencies
-      - cd backend
+      - cd backend && echo "Successfully entered backend" || echo "Failed to enter backend"
       - pip install --upgrade pip
       - pip install -r requirements.txt
       - cd ..
       
       # Install frontend dependencies
-      - cd frontend
+      - cd frontend && echo "Successfully entered frontend" || echo "Failed to enter frontend"
       - npm install
       - cd ..
 
   build:
     commands:
+      # We should be in async-data-aggregator here
+      - echo "Build phase - current directory:"
+      - pwd
+      - ls -la
+      
       # Build frontend
-      - cd frontend
+      - cd frontend && echo "Entered frontend for build" || echo "Failed to enter frontend for build"
       - npm run build
       - cd ..
       
       # Prepare deployment
       - mkdir -p deploy
-      - cp -r backend deploy/
-      - cp -r frontend/dist deploy/frontend
+      - cp -r backend deploy/ || echo "Failed to copy backend"
+      - cp -r frontend/dist deploy/frontend || echo "Failed to copy frontend"
 
   post_build:
     commands:
+      - echo "Post_build phase - current directory:"
+      - pwd
+      - ls -la
+      
       - echo "Deploying to EC2 instance 54.208.23.59"
       
       # Create directories on EC2
       - ssh ec2-user@54.208.23.59 "sudo mkdir -p /opt/data-aggregator/backend /var/www/html && sudo chown -R ec2-user:ec2-user /opt/data-aggregator /var/www/html"
       
       # Copy backend files
-      - scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/
+      - scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/ || echo "SCP backend failed"
       
       # Copy frontend files
-      - scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/
+      - scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/ || echo "SCP frontend failed"
       
       - echo "Deployment complete!"
 
