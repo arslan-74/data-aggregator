@@ -8,7 +8,7 @@ phases:
   install:
     runtime-versions:
       python: 3.9
-      nodejs: 12
+      nodejs: 18  # Changed from 12 to 18
     commands:
       # Setup SSH key for deployment
       - mkdir -p ~/.ssh
@@ -19,10 +19,9 @@ phases:
       # Navigate to the project folder
       - cd async-data-aggregator
       
-      # Show current directory and files
-      - echo "===== Current directory ====="
-      - pwd
-      - ls -la
+      # Show versions
+      - node --version
+      - npm --version
       
       # Install backend dependencies
       - cd backend
@@ -32,49 +31,36 @@ phases:
       
       # Install frontend dependencies
       - cd frontend
-      - echo "===== Frontend package.json ====="
-      - cat package.json
       - npm install
       - cd ..
 
   build:
     commands:
-      # Show versions
-      - echo "===== Versions ====="
-      - node --version
-      - npm --version
-      
-      # Build frontend with verbose output
+      # Build frontend
       - cd frontend
-      - echo "===== Building frontend ====="
-      - npm run build --verbose
+      - npm run build
       - cd ..
-      
-      # Check if build succeeded
-      - echo "===== Checking build output ====="
-      - ls -la frontend/dist || echo "Build output directory not found"
       
       # Prepare deployment
       - mkdir -p deploy
       - cp -r backend deploy/
-      - cp -r frontend/dist deploy/frontend || echo "Frontend dist not found"
-      - echo "===== Deploy directory contents ====="
+      - cp -r frontend/dist deploy/frontend
       - ls -la deploy/
 
   post_build:
     commands:
-      - echo "===== Deploying to EC2 ====="
+      - echo "Deploying to EC2 instance 54.208.23.59"
       
       # Create directories on EC2
       - ssh ec2-user@54.208.23.59 "sudo mkdir -p /opt/data-aggregator/backend /var/www/html && sudo chown -R ec2-user:ec2-user /opt/data-aggregator /var/www/html"
       
-      # Copy backend files if they exist
-      - if [ -d "deploy/backend" ]; then scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/; else echo "Backend directory not found"; fi
+      # Copy backend files
+      - scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/
       
-      # Copy frontend files if they exist
-      - if [ -d "deploy/frontend" ]; then scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/; else echo "Frontend directory not found"; fi
+      # Copy frontend files
+      - scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/
       
-      - echo "===== Deployment complete ====="
+      - echo "Deployment complete!"
 
 artifacts:
   files:
