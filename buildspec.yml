@@ -16,7 +16,8 @@ phases:
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan -H 54.208.23.59 >> ~/.ssh/known_hosts
       
-      # NO cd command needed - we're already in async-data-aggregator!
+      # Navigate to the project folder (ONCE at the beginning)
+      - cd async-data-aggregator
       
       # Install backend dependencies
       - cd backend
@@ -31,6 +32,8 @@ phases:
 
   build:
     commands:
+      # We're still in async-data-aggregator from the install phase
+      
       # Build frontend
       - cd frontend
       - npm run build
@@ -44,6 +47,8 @@ phases:
   post_build:
     commands:
       - echo "Deploying to EC2 instance 54.208.23.59"
+      
+      # We're still in async-data-aggregator
       
       # Create directories on EC2
       - ssh ec2-user@54.208.23.59 "sudo mkdir -p /opt/data-aggregator/backend /var/www/html && sudo chown -R ec2-user:ec2-user /opt/data-aggregator /var/www/html"
