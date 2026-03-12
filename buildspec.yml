@@ -8,7 +8,7 @@ phases:
   install:
     runtime-versions:
       python: 3.11
-      nodejs: 20
+      nodejs: 12
     commands:
       # Setup SSH key
       - mkdir -p ~/.ssh
