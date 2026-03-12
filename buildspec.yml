@@ -10,17 +10,19 @@ phases:
       python: 3.11
       nodejs: 20
     commands:
-      # Setup SSH key for deployment
+      # Setup SSH key
       - mkdir -p ~/.ssh
       - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan -H 54.208.23.59 >> ~/.ssh/known_hosts
       
+      # IMPORTANT: Navigate into your project folder
+      - cd async-data-aggregator
+      
       # Install backend dependencies
       - cd backend
       - pip install --upgrade pip
       - pip install -r requirements.txt
-      - pip install uvicorn fastapi
       - cd ..
       
       # Install frontend dependencies
@@ -30,6 +32,9 @@ phases:
 
   build:
     commands:
+      # Navigate to project folder again (build starts from root each time)
+      - cd async-data-aggregator
+      
       # Build frontend
       - cd frontend
       - npm run build
@@ -42,22 +47,16 @@ phases:
 
   post_build:
     commands:
-      # Deploy to EC2
-      - echo "Deploying to EC2 instance 54.208.23.59"
+      - echo "Deploying to EC2..."
       
-      # Create directories on EC2 if they don't exist
+      # Create directories on EC2
       - ssh ec2-user@54.208.23.59 "sudo mkdir -p /opt/data-aggregator/backend /var/www/html && sudo chown -R ec2-user:ec2-user /opt/data-aggregator /var/www/html"
       
-      # Copy backend files
-      - scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/
+      # Copy files from the deploy folder (notice the full path)
+      - scp -r async-data-aggregator/deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/
+      - scp -r async-data-aggregator/deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/
       
-      # Copy frontend files
-      - scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/
-      
-      # Restart services
-      - ssh ec2-user@54.208.23.59 "sudo systemctl restart data-aggregator || echo 'Service not yet configured'"
-      
-      echo "Deployment complete!"
+      - echo "Deployment complete!"
 
 artifacts:
   files:
