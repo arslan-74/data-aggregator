@@ -10,14 +10,13 @@ phases:
       python: 3.9
       nodejs: 12
     commands:
-      # Setup SSH key
+      # Setup SSH key for deployment
       - mkdir -p ~/.ssh
       - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan -H 54.208.23.59 >> ~/.ssh/known_hosts
       
-      # IMPORTANT: Navigate into your project folder
-      - cd async-data-aggregator
+      # We're already in the async-data-aggregator folder, so no need to cd
       
       # Install backend dependencies
       - cd backend
@@ -32,9 +31,6 @@ phases:
 
   build:
     commands:
-      # Navigate to project folder again (build starts from root each time)
-      - cd async-data-aggregator
-      
       # Build frontend
       - cd frontend
       - npm run build
@@ -47,14 +43,16 @@ phases:
 
   post_build:
     commands:
-      - echo "Deploying to EC2..."
+      - echo "Deploying to EC2 instance 54.208.23.59"
       
       # Create directories on EC2
       - ssh ec2-user@54.208.23.59 "sudo mkdir -p /opt/data-aggregator/backend /var/www/html && sudo chown -R ec2-user:ec2-user /opt/data-aggregator /var/www/html"
       
-      # Copy files from the deploy folder (notice the full path)
-      - scp -r async-data-aggregator/deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/
-      - scp -r async-data-aggregator/deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/
+      # Copy backend files - note: no async-data-aggregator prefix
+      - scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/
+      
+      # Copy frontend files
+      - scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/
       
       - echo "Deployment complete!"
 
