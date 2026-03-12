@@ -10,77 +10,71 @@ phases:
       python: 3.9
       nodejs: 12
     commands:
-      # DEBUG: Show what directory we're in
-      - echo "Current directory:"
-      - pwd
-      
-      # DEBUG: List all files and folders
-      - echo "Listing all files:"
-      - ls -la
-      
       # Setup SSH key for deployment
       - mkdir -p ~/.ssh
       - echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
       - chmod 600 ~/.ssh/id_rsa
       - ssh-keyscan -H 54.208.23.59 >> ~/.ssh/known_hosts
       
-      # Try to find the project folder
-      - echo "Looking for async-data-aggregator folder:"
-      - find . -name "backend" -type d
-      
       # Navigate to the project folder
-      - cd async-data-aggregator || echo "Failed to cd to async-data-aggregator"
+      - cd async-data-aggregator
       
-      # Show what's in the project folder
-      - echo "Contents of async-data-aggregator:"
-      - ls -la || echo "Directory not found"
+      # Show current directory and files
+      - echo "===== Current directory ====="
+      - pwd
+      - ls -la
       
       # Install backend dependencies
-      - cd backend && echo "Successfully entered backend" || echo "Failed to enter backend"
+      - cd backend
       - pip install --upgrade pip
       - pip install -r requirements.txt
       - cd ..
       
       # Install frontend dependencies
-      - cd frontend && echo "Successfully entered frontend" || echo "Failed to enter frontend"
+      - cd frontend
+      - echo "===== Frontend package.json ====="
+      - cat package.json
       - npm install
       - cd ..
 
   build:
     commands:
-      # We should be in async-data-aggregator here
-      - echo "Build phase - current directory:"
-      - pwd
-      - ls -la
+      # Show versions
+      - echo "===== Versions ====="
+      - node --version
+      - npm --version
       
-      # Build frontend
-      - cd frontend && echo "Entered frontend for build" || echo "Failed to enter frontend for build"
-      - npm run build
+      # Build frontend with verbose output
+      - cd frontend
+      - echo "===== Building frontend ====="
+      - npm run build --verbose
       - cd ..
+      
+      # Check if build succeeded
+      - echo "===== Checking build output ====="
+      - ls -la frontend/dist || echo "Build output directory not found"
       
       # Prepare deployment
       - mkdir -p deploy
-      - cp -r backend deploy/ || echo "Failed to copy backend"
-      - cp -r frontend/dist deploy/frontend || echo "Failed to copy frontend"
+      - cp -r backend deploy/
+      - cp -r frontend/dist deploy/frontend || echo "Frontend dist not found"
+      - echo "===== Deploy directory contents ====="
+      - ls -la deploy/
 
   post_build:
     commands:
-      - echo "Post_build phase - current directory:"
-      - pwd
-      - ls -la
-      
-      - echo "Deploying to EC2 instance 54.208.23.59"
+      - echo "===== Deploying to EC2 ====="
       
       # Create directories on EC2
       - ssh ec2-user@54.208.23.59 "sudo mkdir -p /opt/data-aggregator/backend /var/www/html && sudo chown -R ec2-user:ec2-user /opt/data-aggregator /var/www/html"
       
-      # Copy backend files
-      - scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/ || echo "SCP backend failed"
+      # Copy backend files if they exist
+      - if [ -d "deploy/backend" ]; then scp -r deploy/backend/* ec2-user@54.208.23.59:/opt/data-aggregator/backend/; else echo "Backend directory not found"; fi
       
-      # Copy frontend files
-      - scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/ || echo "SCP frontend failed"
+      # Copy frontend files if they exist
+      - if [ -d "deploy/frontend" ]; then scp -r deploy/frontend/* ec2-user@54.208.23.59:/var/www/html/; else echo "Frontend directory not found"; fi
       
-      - echo "Deployment complete!"
+      - echo "===== Deployment complete ====="
 
 artifacts:
   files:
